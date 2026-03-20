@@ -1,36 +1,83 @@
 # YASS — Yet Another Simple Signup
 
-Fair event signups without the cognitive overhead. No bots, no refresh wars, no repeat attendees hogging spots.
+Fair event signups for recurring community events. No bots, no refresh wars, no repeat attendees hogging spots.
 
 ---
 
-## What Is This?
+## What is YASS?
 
-YASS is a Next.js web app for managing signups to recurring community events. The key idea: organizers configure a **selection algorithm** for each event, and the system runs it automatically at signup close time. Attendees don't need accounts — email OTP verification is the only identity anchor.
+YASS is a signup management service for organizers who run recurring events — hiking groups, dinner clubs, classes, workshops, anything with limited capacity and a regular crowd.
 
-**Selection algorithms:**
-- **FCFS** — First Come, First Served. Simple queue by signup time.
-- **Lottery** — Random draw from all submitted signups.
-- **Lottery with Preference** — Weighted lottery; attendees who missed out on recent events get higher weight via *preference points*.
-- **FCFS with Preference** — FCFS ordering, but preference points let people who missed out "cut in line."
+The core problem it solves: when spots are limited and demand is high, signups become stressful and unfair. Fast-clickers win. Regulars shut out newcomers. The same people get in every time.
 
-**Preference points** accumulate per-user per-series when someone is waitlisted or doesn't get in, and are consumed when they are selected. This creates a fair rotation over time.
+YASS fixes this by letting organizers choose a **selection algorithm** for each event. Instead of a race, signups are collected during an open window and then the system picks attendees fairly based on the rules you set.
 
 ---
 
-## Tech Stack
+## How It Works
 
-| Layer | Choice |
-|-------|--------|
-| Framework | Next.js 15 (App Router) |
-| Language | TypeScript |
-| UI | ShadCN UI + Tailwind CSS |
-| Database | PostgreSQL via Neon (serverless) |
-| ORM | Drizzle ORM |
-| Auth | Auth0 (Google OAuth) for organizers/admins; email OTP for attendees |
-| Email | Novu |
-| Analytics | PostHog |
-| Hosting | Vercel |
+### For attendees
+
+1. Browse open events and click **Sign Up**.
+2. Verify your email with a 6-digit code — no account, no password required.
+3. Fill out the signup form and submit.
+4. Wait for the organizer to close and run selection.
+5. Receive an email telling you if you're confirmed, waitlisted, or didn't make it.
+6. Manage or cancel your signup anytime via the link in your email.
+
+### For organizers
+
+1. Create an **event series** (e.g. "Tuesday Night Hikes").
+2. Add individual **events** to the series with a date, capacity, and signup deadline.
+3. Publish the event — signups open immediately.
+4. When the deadline passes, run **selection** to generate a proposed attendee list.
+5. Review and optionally adjust the proposals, then **finalize** — confirmed and waitlisted attendees are notified by email.
+
+Selection also runs automatically overnight, so events with passed deadlines are handled without manual intervention.
+
+---
+
+## Selection Algorithms
+
+Organizers pick one of four algorithms per event:
+
+| Algorithm | How it works |
+|-----------|-------------|
+| **First Come, First Served** | Signups are confirmed in the order received. Simple queue. |
+| **Lottery** | Confirmed spots are drawn randomly from all submitted signups. Everyone has equal odds. |
+| **Lottery with Preference** | Weighted lottery. Attendees who missed out on recent events in this series get higher odds. |
+| **FCFS with Preference** | Queue ordering, but preference points let people who've been shut out recently move up the line. |
+
+### Preference Points
+
+Preference points make the preference algorithms work. They're tracked per-person per-series:
+
+- You **earn** a point each time you're waitlisted or don't get selected.
+- Your points are **spent** (reset to zero) when you're confirmed.
+
+Over time, this creates a natural rotation — people who've been left out keep accumulating weight until they get in.
+
+---
+
+## Roles
+
+**Attendees** — anyone with an email address. No account required.
+
+**Organizers** — log in via Google to access the organizer dashboard. Can create and manage series, events, and forms, and run selection.
+
+**Admins** — full access including the admin panel (all events across all organizers, user management).
+
+---
+
+## Signup Lifecycle
+
+```
+submitted → (selection runs) → confirmed
+                             → waitlisted → (cancellation opens a spot) → confirmed
+                             → cancelled (by attendee at any time)
+```
+
+Confirmed attendees who cancel automatically promote the next person on the waitlist.
 
 ---
 
@@ -39,155 +86,60 @@ YASS is a Next.js web app for managing signups to recurring community events. Th
 ### Prerequisites
 
 - Node.js 18+
-- A Neon (or any Postgres) database
+- PostgreSQL database (Neon recommended)
 - Auth0 tenant
 - Novu account
 
-### 1. Clone and install
+### Setup
 
 ```bash
 git clone <repo>
 cd yass
 npm install
-```
-
-### 2. Set up environment variables
-
-Copy `.env.local` and fill in the values:
-
-```bash
-cp .env.local.example .env.local  # or edit .env.local directly
-```
-
-Required variables:
-
-```env
-# Neon PostgreSQL
-DATABASE_URL=postgresql://user:pass@host/dbname?sslmode=require
-
-# Auth0
-AUTH0_SECRET=<32-char random string>
-AUTH0_BASE_URL=http://localhost:3000
-AUTH0_ISSUER_BASE_URL=https://<your-tenant>.auth0.com
-AUTH0_CLIENT_ID=<your-client-id>
-AUTH0_CLIENT_SECRET=<your-client-secret>
-
-# Novu
-NOVU_API_KEY=<your-novu-api-key>
-NOVU_APP_ID=<your-novu-app-id>
-
-# PostHog (optional in dev)
-NEXT_PUBLIC_POSTHOG_KEY=<your-posthog-key>
-NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
-
-# Cron security
-CRON_SECRET=<random secret for cron endpoint>
-```
-
-### 3. Run database migrations
-
-```bash
-npm run db:generate
+cp .env.local.example .env.local   # fill in your credentials
 npm run db:migrate
-```
-
-### 4. Seed initial data
-
-```bash
 npm run db:seed
-```
-
-This creates a "Basic" form template (name, email, attendees fields).
-
-### 5. Start the dev server
-
-```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
----
+### Environment Variables
 
-## Key Concepts
+```env
+DATABASE_URL=postgresql://...
 
-### Selection Algorithms
+AUTH0_SECRET=<random 32-char string>
+AUTH0_BASE_URL=http://localhost:3000
+AUTH0_ISSUER_BASE_URL=https://<tenant>.auth0.com
+AUTH0_CLIENT_ID=...
+AUTH0_CLIENT_SECRET=...
 
-When signup closes, the `/api/cron/run-selection` endpoint is called (or an organizer triggers it manually). It:
+NOVU_API_KEY=...
+NOVU_APP_ID=...
 
-1. Fetches all `submitted` signups for the event.
-2. Applies the configured algorithm to produce a list of `confirmed` and `waitlisted` signups.
-3. Writes `signup_proposals` with the proposed outcomes.
-4. Organizers can review and adjust proposals before finalizing.
-5. On finalize, `signups.status` is updated and Novu notifications are sent.
+NEXT_PUBLIC_POSTHOG_KEY=...          # optional
+NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
 
-### Preference Points
-
-- Stored in `preference_points` (userId + seriesId + points).
-- Incremented when a user is waitlisted after selection.
-- Decremented (or reset) when a user is selected.
-- Used as weights in `lottery_preference` and as queue-position adjustments in `fcfs_preference`.
-
-### Attendee Identity
-
-Attendees are identified by email only. On signup they get an OTP to verify their email. No password or OAuth is required. Their signup status page is accessible via a tokenized link (`/my-signup/:cancelToken`) emailed to them.
+CRON_SECRET=<random string>
+```
 
 ---
 
 ## Deployment
 
-### Vercel
+Deploy to Vercel. Connect the repo, add environment variables, and optionally provision Neon and Auth0 via the Vercel marketplace integrations.
 
-1. Connect the repo to Vercel.
-2. Add all environment variables in the Vercel dashboard.
-3. The Neon database can be provisioned directly through the Vercel Neon integration.
+### Auth0 configuration
 
-### Cron Job
-
-Set up a daily cron (e.g. Vercel Cron) to call:
-
-```
-GET /api/cron/run-selection
-Authorization: Bearer <CRON_SECRET>
-```
-
-This auto-closes and runs selection for events whose `signup_closes_at` has passed.
-
-### Auth0 Setup
-
-1. Create an Auth0 application (Regular Web App).
-2. Add `http://localhost:3000/auth/callback` (dev) and your production URL to Allowed Callback URLs.
-3. Add `http://localhost:3000` to Allowed Logout URLs.
-4. To assign roles, use the Admin panel at `/admin/users` after setting up your first admin via Auth0 Actions or the Management API.
-
-Custom claims for roles should be injected in an Auth0 Action (Post-Login trigger):
+Create a Regular Web App in Auth0 and add your callback and logout URLs. To give users organizer or admin access, assign roles in Auth0 and add a Post-Login Action that injects them into the token:
 
 ```js
 exports.onExecutePostLogin = async (event, api) => {
-  const namespace = 'https://yass.app';
   const roles = event.authorization?.roles ?? [];
-  api.idToken.setCustomClaim(`${namespace}/roles`, roles);
-  api.accessToken.setCustomClaim(`${namespace}/roles`, roles);
+  api.idToken.setCustomClaim('https://yass.app/roles', roles);
+  api.accessToken.setCustomClaim('https://yass.app/roles', roles);
 };
 ```
 
----
-
-## Project Structure
-
-```
-src/
-  app/
-    admin/          # Admin-only pages (all events, user management)
-    organizer/      # Organizer pages (events, series, forms, attendees)
-    events/         # Public event browsing + signup flow
-    my-signup/      # Attendee status page (tokenized)
-    api/            # API routes
-  components/       # Shared UI components
-  db/               # Drizzle schema, client, and seed
-  lib/
-    auth0.ts        # Auth0 client
-    novu.ts         # Novu client
-    schemas/        # Zod schemas (form fields, responses)
-    selection/      # Selection algorithm implementations + tests
-```
+Then assign roles to your user in the Auth0 dashboard and use `/admin/users` to manage YASS-level roles after your first login.

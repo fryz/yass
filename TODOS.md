@@ -4,23 +4,11 @@ Captured during /plan-eng-review on 2026-03-20.
 
 ---
 
-## ~~TODO: OTP Rate Limiting~~ DONE
+## ~~TODO: OTP Rate Limiting~~ ✅ DONE
 
-> Implemented in `src/app/api/auth/email/send-otp/route.ts` — max 5 OTP sends per email per hour using a COUNT query on `email_verifications`.
+**Completed:** 2026-03-20
 
-## TODO: OTP Rate Limiting (archived)
-
-**What:** Limit how many OTP requests a single email can make per hour (suggested: max 5 per hour per email).
-
-**Why:** Without this, `POST /api/auth/email/send-otp` can be abused to spam any email address with verification codes.
-
-**Pros:** Prevents email spam abuse. Cheap to implement using the existing `email_verifications` table — just count recent requests per email within the time window before inserting a new OTP row.
-
-**Cons:** Adds a small amount of complexity. Could temporarily block a legitimate user who repeatedly mistyped their email (though they can wait out the window).
-
-**Context:** The `email_verifications` table already has `created_at`. Query: `COUNT(*) WHERE email = ? AND created_at > NOW() - INTERVAL '1 hour'`. No Redis or external rate limiter needed.
-
-**Depends on / blocked by:** Phase 2 OTP flow implementation (`/api/auth/email/send-otp`).
+Implemented in `src/app/api/auth/email/send-otp/route.ts` — max 5 OTP sends per email per hour using a COUNT query on `email_verifications`.
 
 ---
 
