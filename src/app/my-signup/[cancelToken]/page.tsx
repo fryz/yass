@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { signups, events, users, signupAttendees, preferencePoints, eventSeries } from "@/db/schema";
-import { eq, and, eq as drizzleEq, count } from "drizzle-orm";
+import { eq, and, eq as drizzleEq, count, lt } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import {
   Card,
@@ -64,28 +64,18 @@ export default async function MySignupPage({ params }: PageProps) {
   // Calculate waitlist position if waitlisted
   let waitlistPosition: number | null = null;
   if (signup.status === "waitlisted") {
-    const [positionResult] = await db
-      .select({ value: count() })
-      .from(signups)
-      .where(
-        and(
-          drizzleEq(signups.eventId, signup.eventId),
-          drizzleEq(signups.status, "waitlisted")
-        )
-      );
-    // Count signups with an earlier signed_up_at for the same event with waitlisted status
+    // Count waitlisted signups that joined before this one to get the user's queue position
     const [earlierCount] = await db
       .select({ value: count() })
       .from(signups)
       .where(
         and(
           drizzleEq(signups.eventId, signup.eventId),
-          drizzleEq(signups.status, "waitlisted")
+          drizzleEq(signups.status, "waitlisted"),
+          lt(signups.signedUpAt, signup.signedUpAt)
         )
       );
-    // Simple position: use raw query approach
-    // We'll just display total waitlist count for now and note position
-    waitlistPosition = positionResult.value;
+    waitlistPosition = earlierCount.value + 1; // 1-based position
   }
 
   const isCancellable =
@@ -218,7 +208,7 @@ export default async function MySignupPage({ params }: PageProps) {
                 <p className="text-sm font-medium text-orange-900">You&apos;re on the waitlist</p>
                 <p className="mt-1 text-sm text-orange-700">
                   {waitlistPosition !== null
-                    ? `There are currently ${waitlistPosition} people on the waitlist. `
+                    ? `You are #${waitlistPosition} on the waitlist. `
                     : ""}
                   You&apos;ll be automatically promoted if a confirmed attendee cancels.
                 </p>
