@@ -30,5 +30,5 @@ export async function getOrUpsertOrganizerUser(sessionUser: {
   if (created) return created;
 
   // Race condition: another concurrent request inserted first
-  return db.query.users.findFirst({ where: eq(users.email, sessionUser.email) }) ?? null;
+  return (await db.query.users.findFirst({ where: eq(users.email, sessionUser.email) })) ?? null;
 }
