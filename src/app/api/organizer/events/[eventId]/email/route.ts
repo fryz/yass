@@ -5,6 +5,7 @@ import { events, eventSeries, signups, users } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { z } from "zod";
 import { sendEmail } from "@/lib/novu";
+import { getOrUpsertOrganizerUser } from "@/lib/get-organizer-user";
 
 const BodySchema = z.object({
   subject: z.string().min(1),
@@ -58,9 +59,7 @@ export async function POST(
   const series = await db.query.eventSeries.findFirst({
     where: eq(eventSeries.id, event.seriesId),
   });
-  const organizerUser = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email!),
-  });
+  const organizerUser = await getOrUpsertOrganizerUser(session.user);
   const roles = getUserRoles(session);
   const isAdmin = roles.includes("admin");
   const isOwner = organizerUser && series?.organizerId === organizerUser.id;

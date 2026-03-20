@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { db } from "@/db";
-import { events, eventSeries, signups, users } from "@/db/schema";
+import { events, eventSeries, signups } from "@/db/schema";
 import { eq, and, ne, count } from "drizzle-orm";
 import { z } from "zod";
+import { getOrUpsertOrganizerUser } from "@/lib/get-organizer-user";
 
 const PatchSchema = z.object({
   action: z.enum(["publish", "close", "reopen_draft"]),
@@ -54,9 +55,7 @@ export async function PATCH(
   });
 
   // Authorization: organizer must own the series, or be admin
-  const organizerUser = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email!),
-  });
+  const organizerUser = await getOrUpsertOrganizerUser(session.user);
   const roles = getUserRoles(session);
   const isAdmin = roles.includes("admin");
   const isOwner = organizerUser && series?.organizerId === organizerUser.id;

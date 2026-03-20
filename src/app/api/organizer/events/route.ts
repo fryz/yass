@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { db } from "@/db";
-import { eventSeries, events, forms, users } from "@/db/schema";
+import { eventSeries, events, forms } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { getOrUpsertOrganizerUser } from "@/lib/get-organizer-user";
 
 const CreateEventSchema = z.object({
   // Series: either reference existing or create new
@@ -28,10 +29,6 @@ function slugify(name: string): string {
     .replace(/-+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 80);
-}
-
-async function getOrganizerUser(email: string) {
-  return db.query.users.findFirst({ where: eq(users.email, email) });
 }
 
 function getUserRoles(session: { user: Record<string, unknown> }): string[] {
@@ -78,7 +75,7 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const organizerUser = await getOrganizerUser(session.user.email!);
+  const organizerUser = await getOrUpsertOrganizerUser(session.user);
   if (!organizerUser) {
     return NextResponse.json({ error: "Organizer user not found." }, { status: 404 });
   }
@@ -178,7 +175,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const organizerUser = await getOrganizerUser(session.user.email!);
+  const organizerUser = await getOrUpsertOrganizerUser(session.user);
   if (!organizerUser) return NextResponse.json([], { status: 200 });
 
   const roles = getUserRoles(session);

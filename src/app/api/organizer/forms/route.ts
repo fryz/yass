@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { db } from "@/db";
-import { eventSeries, forms, users } from "@/db/schema";
+import { eventSeries, forms } from "@/db/schema";
 import { eq, inArray } from "drizzle-orm";
+import { getOrUpsertOrganizerUser } from "@/lib/get-organizer-user";
 
 function getUserRoles(session: { user: Record<string, unknown> }): string[] {
   return (
@@ -18,9 +19,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const organizerUser = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email!),
-  });
+  const organizerUser = await getOrUpsertOrganizerUser(session.user);
   if (!organizerUser) return NextResponse.json([], { status: 200 });
 
   const roles = getUserRoles(session);

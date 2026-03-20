@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth0 } from "@/lib/auth0";
 import { db } from "@/db";
-import { eventSeries, users } from "@/db/schema";
+import { eventSeries } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
+import { getOrUpsertOrganizerUser } from "@/lib/get-organizer-user";
 
 const CreateSeriesSchema = z.object({
   name: z.string().min(1),
@@ -53,9 +54,7 @@ export async function POST(req: NextRequest) {
 
   const { name, description } = parsed.data;
 
-  const organizerUser = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email!),
-  });
+  const organizerUser = await getOrUpsertOrganizerUser(session.user);
   if (!organizerUser) {
     return NextResponse.json({ error: "Organizer user not found." }, { status: 404 });
   }
@@ -92,9 +91,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const organizerUser = await db.query.users.findFirst({
-    where: eq(users.email, session.user.email!),
-  });
+  const organizerUser = await getOrUpsertOrganizerUser(session.user);
   if (!organizerUser) return NextResponse.json([], { status: 200 });
 
   const roles = getUserRoles(session);
