@@ -88,7 +88,8 @@ Confirmed attendees who cancel automatically promote the next person on the wait
 - Node.js 18+
 - PostgreSQL database (Neon recommended)
 - Auth0 tenant
-- Novu account
+- Novu account (for workflow orchestration)
+- Resend account (for email delivery — configure as the Email provider inside Novu)
 
 ### Setup
 
@@ -115,8 +116,8 @@ AUTH0_ISSUER_BASE_URL=https://<tenant>.auth0.com
 AUTH0_CLIENT_ID=...
 AUTH0_CLIENT_SECRET=...
 
-NOVU_API_KEY=...
-NOVU_APP_ID=...
+NOVU_SECRET_KEY=...              # from Novu dashboard → API Keys
+SESSION_SECRET=<random 32-char string>  # used to seal attendee session cookies
 
 NEXT_PUBLIC_POSTHOG_KEY=...          # optional
 NEXT_PUBLIC_POSTHOG_HOST=https://app.posthog.com
@@ -129,6 +130,17 @@ CRON_SECRET=<random string>
 ## Deployment
 
 Deploy to Vercel. Connect the repo, add environment variables, and optionally provision Neon and Auth0 via the Vercel marketplace integrations.
+
+### Novu + Resend configuration
+
+YASS uses Novu for email workflow orchestration. Novu's built-in test provider can only send to the Novu account owner — you must connect a real email provider before emails will reach attendees.
+
+1. Create a [Resend](https://resend.com) account and get an API key.
+2. In the Novu dashboard → **Integrations** → **Add provider** → select **Resend** → paste your API key.
+3. Set Resend as the active provider for the Email channel.
+4. Verify a sending domain in Resend (or use `onboarding@resend.dev` for testing).
+
+Novu workflows are managed in the Novu dashboard. The app expects the following workflow identifiers: `otp`, `signup-received`, `signup-confirmed`, `signup-waitlisted`, `signup-not-selected`, `waitlist-promoted`, `signup-cancelled`, `signup-reminder`.
 
 ### Auth0 configuration
 
