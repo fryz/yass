@@ -14,15 +14,10 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { unsealSession } from "@/lib/session";
 
 interface PageProps {
   params: Promise<{ seriesSlug: string; eventId: string }>;
-}
-
-interface AttendeeSession {
-  email: string;
-  verified: boolean;
-  eventId: string;
 }
 
 export default async function SignupPage({ params }: PageProps) {
@@ -36,10 +31,8 @@ export default async function SignupPage({ params }: PageProps) {
     redirect(`/events/${seriesSlug}/${eventId}/verify`);
   }
 
-  let session: AttendeeSession;
-  try {
-    session = JSON.parse(sessionCookie.value) as AttendeeSession;
-  } catch {
+  const session = await unsealSession(sessionCookie.value);
+  if (!session) {
     redirect(`/events/${seriesSlug}/${eventId}/verify`);
   }
 
