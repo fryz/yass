@@ -17,7 +17,7 @@ export async function sendEmail(
   try {
     await getNovu().trigger({
       workflowId: templateId,
-      to: subscriberId,
+      to: { subscriberId, email: subscriberId },
       payload,
     });
   } catch (err) {
