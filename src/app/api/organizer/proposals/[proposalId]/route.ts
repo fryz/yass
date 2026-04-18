@@ -51,7 +51,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Proposal not found." }, { status: 404 });
   }
 
-  // Check that the event is in 'proposed' or 'finalized' status
+  // Check that the event is in 'proposed' status (proposals are deleted on finalize)
   const event = await db.query.events.findFirst({
     where: eq(events.id, proposal.eventId),
   });

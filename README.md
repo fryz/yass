@@ -139,7 +139,20 @@ YASS uses Novu for email workflow orchestration. Novu's built-in test provider c
 2. In the Novu dashboard → **Integrations** → **Add provider** → select **Brevo** → paste your API key.
 3. Set Brevo as the active provider for the Email channel and configure a from address.
 
-Novu workflows are managed in the Novu dashboard. The app expects the following workflow identifiers: `otp`, `signup-received`, `signup-confirmed`, `signup-waitlisted`, `signup-not-selected`, `waitlist-promoted`, `signup-cancelled`, `signup-reminder`.
+Novu workflows are managed in the Novu dashboard. Create workflows with these exact identifiers:
+
+| Workflow ID | Trigger |
+|---|---|
+| `otp` | OTP verification code sent to attendee |
+| `signup_received` | Attendee submits a signup |
+| `selection_confirmed` | Attendee is confirmed after selection runs |
+| `selection_waitlisted` | Attendee is waitlisted after selection runs |
+| `waitlist_promoted` | Waitlisted attendee is promoted when a confirmed attendee cancels |
+| `cancellation_confirmed` | Attendee cancels their signup |
+| `event_update` | Organizer sends a custom message to confirmed attendees |
+| `organizer_selection_complete` | Organizer is notified after finalization |
+
+Each workflow receives relevant payload variables (name, event_name, event_date, cancel_url, etc.) — check the corresponding API route for the exact payload shape.
 
 ### Auth0 configuration
 

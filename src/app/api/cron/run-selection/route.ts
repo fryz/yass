@@ -5,7 +5,7 @@ import { eq, lte, and } from "drizzle-orm";
 import { runSelectionForEvent } from "@/lib/selection/runSelection";
 
 /**
- * Vercel Cron handler — runs every minute.
+ * Vercel Cron handler — runs daily at midnight (see vercel.json schedule).
  * Finds all 'open' events whose signup_closes_at has passed and runs selection.
  */
 export async function GET(req: NextRequest) {

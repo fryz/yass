@@ -86,6 +86,11 @@ export default function AdminUsersPage() {
         <p className="text-sm text-gray-500 mt-1">
           {users.length} registered user{users.length !== 1 ? "s" : ""}
         </p>
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded px-3 py-2 mt-3">
+          <strong>Note:</strong> Roles set here are YASS-level records for tracking purposes.
+          Actual access to organizer and admin routes is controlled by Auth0 roles — update
+          those in your Auth0 dashboard to grant or revoke access.
+        </p>
       </div>
 
       <div className="rounded-md border">
